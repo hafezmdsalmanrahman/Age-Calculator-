@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no, user-scalable=no, viewport-fit=cover">
     <title>বয়স ক্যালকুলেটর</title>
 
     <!-- External CDNs for core functionalities -->
@@ -12,23 +12,45 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     
+    <!-- Telegram Mini App Script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Monetag Ad Script -->
+    <script src='//libtl.com/sdk.js' data-zone='9528321' data-sdk='show_9528321'></script>
+
     <style>
-        /* পরিবর্তন: ব্যানার অ্যাডের জন্য অতিরিক্ত padding-bottom এবং ব্যানার কন্টেইনারের স্টাইল সরানো হয়েছে */
-        body { background-color: #1E293B; display: flex; flex-direction: column; align-items: center; justify-content: start; min-height: 100vh; padding: 2rem 1rem; }
+        :root {
+            color-scheme: light dark;
+        }
+        body { 
+            background-color: var(--tg-theme-bg-color); 
+            color: var(--tg-theme-text-color);
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: start; 
+            min-height: 100vh; 
+            padding: 2rem 1rem; 
+            padding-bottom: 90px;
+        }
         body.lang-bn { font-family: 'Hind Siliguri', sans-serif; }
         body.lang-en { font-family: 'Poppins', sans-serif; }
-        .main-card { background-color: #334155; }
-        .input-field, .result-card, .saved-list-container, .btn-compare { background-color: #475569; }
-        .btn-save { background-color: #6366F1; } .btn-save:hover { background-color: #4F46E5; }
-        .btn-compare:hover { background-color: #334155; }
-        .btn-calculate { background-color: #14B8A6; } .btn-calculate:hover { background-color: #0D9488; }
+        .main-card { background-color: var(--tg-theme-secondary-bg-color); }
+        .input-field, .result-card, .saved-list-container { background-color: #475569; }
+        .btn-save, .btn-calculate { 
+            background-color: var(--tg-theme-button-color); 
+            color: var(--tg-theme-button-text-color);
+        }
+        .btn-save:hover, .btn-calculate:hover { background-color: var(--tg-theme-button-color); opacity: 0.9; }
+        .btn-compare { background-color: #475569; color: var(--tg-theme-text-color); }
+        .btn-compare:hover { background-color: var(--tg-theme-bg-color); }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+        #settings-fab { bottom: 20px; }
     </style>
 </head>
 <body class="text-white">
 
     <main class="w-full max-w-md">
-        <!-- HTML Part -->
         <div class="main-card p-6 rounded-2xl w-full mx-auto space-y-4">
             <h1 id="main-title" class="text-2xl font-bold text-center flex items-center justify-center gap-3">
                 <i class="fas fa-hourglass-half text-teal-400"></i>
@@ -75,277 +97,112 @@
                 </div>
                 <p id="comparison-subtext" class="text-center text-lg font-semibold text-teal-200 hidden"></p>
                 <div id="extra-info-cards-container" class="space-y-3 pt-3"></div>
+                
+                <button id="unlock-extra-info-btn" class="hidden mt-4 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+                    <i class="fas fa-gift"></i> <span>অতিরিক্ত তথ্য দেখুন (বিজ্ঞাপন)</span>
+                </button>
             </div>
         </div>
     </main>
-
-    <!-- পরিবর্তন: ব্যানার অ্যাড কন্টেইনার সম্পূর্ণভাবে সরানো হয়েছে -->
     
-    <button id="settings-fab" class="fixed bottom-6 right-6 bg-slate-600 hover:bg-slate-500 h-14 w-14 rounded-full flex items-center justify-center shadow-lg z-50">
+    <button id="settings-fab" class="fixed right-6 bg-slate-600 hover:bg-slate-500 h-14 w-14 rounded-full flex items-center justify-center shadow-lg z-50">
         <i id="settings-fab-icon" class="fas fa-globe text-2xl"></i>
     </button>
     
+    <!-- পরিবর্তন: বিজ্ঞাপনের HTML প্লেসহোল্ডারগুলো সরানো হয়েছে, কারণ SDK এগুলো নিজে তৈরি করে -->
+
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script>
-        // Bengali Date & Hijri Converter (no changes needed here)
+        // Bengali Date & Hijri Converter (unchanged)
         function BengaliDate(a){function g(a){var b=a.getFullYear(),c=a.getMonth(),d=a.getDate();if(c<3||3==c&&d<14)var e=b-594,f=(c+9)%12;else var e=b-593,f=(c-3)%12;var g=[31,31,31,31,31,30,30,30,30,30,30,30];(e%400==0||e%100!=0&&e%4==0)&&(g[10]=31);var h=[13,13,14,13,14,14,15,15,15,15,14,14],i=d-h[c];return i<0&&(i=i+g[(f+11)%12]),[i+1,f,e]} "undefined"==typeof a&&(a=new Date);var b=g(a),c=["রবিবার","সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার"],d=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"],e={bn:d,en:["Boishakh","Joishtho","Ashar","Shrabon","Bhadro","Ashin","Kartik","Ogrohayon","Poush","Magh","Falgun","Choitro"]};this.format=function(f, lang = 'bn'){ "undefined"==typeof f&&(f="D MMMM, YYYY");var g=b[0],h=e[lang][b[1]],i=b[2],j=a.getDay();return f.replace(/DD/g,g).replace(/D/g,Number(g)).replace(/MMMM/g,h).replace(/YYYY/g,i).replace(/YY/g,i.toString().substr(-2)).replace(/dddd/g,c[j])}}
         const hijriConverter = {toHijri: function(gregorianDate) {let d = gregorianDate;let gy = d.getFullYear();let gm = d.getMonth() + 1;let gd = d.getDate();let jd;if (gy > 1582 || (gy === 1582 && gm > 10) || (gy === 1582 && gm === 10 && gd > 14)) {jd = Math.floor((1461 * (gy + 4800 + Math.floor((gm - 14) / 12))) / 4) + Math.floor((367 * (gm - 2 - 12 * (Math.floor((gm - 14) / 12)))) / 12) - Math.floor((3 * (Math.floor((gy + 4900 + Math.floor((gm - 14) / 12)) / 100))) / 4) + gd - 32075;} else {jd = 367 * gy - Math.floor((7 * (gy + 5001 + Math.floor((gm - 9) / 7))) / 4) + Math.floor((275 * gm) / 9) + gd + 1729777;}let l = jd - 1948440 + 10632;let n = Math.floor((l - 1) / 10631);l = l - 10631 * n + 354;let j = (Math.floor((10985 - l) / 5316)) * (Math.floor((50 * l) / 17719)) + (Math.floor(l / 5670)) * (Math.floor((43 * l) / 15238));l = l - (Math.floor((30 - j) / 15)) * (Math.floor((17719 * j) / 50)) - (Math.floor(j / 16)) * (Math.floor((15238 * j) / 43)) + 29;let hm = Math.floor((24 * l) / 709);let hd = l - Math.floor((709 * hm) / 24);let hy = 30 * n + j - 30;return { hy, hm, hd };}};
     </script>
-    
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // পরিবর্তন: সকল প্রকার অ্যাডের কোড (HTML, CSS, এবং JS) সরানো হয়েছে।
-        
-        // অ্যাপের মূল কার্যকারিতা এখানে শুরু
+        const tg = window.Telegram.WebApp;
+        tg.ready(); tg.expand(); tg.setHeaderColor('secondary_bg_color');
+
+        // === পরিবর্তন: In-App Interstitial বিজ্ঞাপন লোড হওয়ার সাথে সাথে সেট করা ===
+        // এই কোডটি আপনার দেওয়া সেটিংস অনুযায়ী স্বয়ংক্রিয়ভাবে বিজ্ঞাপন দেখাবে
+        show_9528321({
+          type: 'inApp',
+          inAppSettings: {
+            frequency: 2,
+            capping: 0.1,
+            interval: 30,
+            timeout: 5,
+            everyPage: false
+          }
+        });
+
+        // অ্যাপের মূল কোড
+        const unlockExtraInfoBtn = document.getElementById('unlock-extra-info-btn');
         let currentLang = 'bn', isCompareMode = false;
-        const langStrings = {
-            title: { bn: 'বয়স ক্যালকুলেটর', en: 'Age Calculator' }, person1Label: { bn: 'আপনার জন্ম তারিখ দিন', en: 'Enter Date of Birth' }, person2Label: { bn: 'দ্বিতীয় ব্যক্তির জন্ম তারিখ', en: 'Second Person\'s Date of Birth' },
-            saveBtn: { bn: 'সেভ করুন', en: 'Save' }, calculateBtn: { bn: 'হিসাব করুন', en: 'Calculate' }, compareBtn: { bn: 'বয়স ডিফারেন্স চেক করুন', en: 'Compare' }, compareToggleBtn: { bn: 'বয়স ডিফারেন্স চেক করুন', en: 'Compare Age' },
-            cancelCompare: { bn: 'বাতিল করুন', en: 'Cancel' }, savedBirthdaysTitle: { bn: 'সংরক্ষিত জন্মদিন', en: 'Saved Birthdays' }, years: { bn: 'বছর', en: 'Years' }, months: { bn: 'মাস', en: 'Months' },
-            days: { bn: 'দিন', en: 'Days' }, ageDifference: {bn: 'বয়সের পার্থক্য', en: 'Age Difference'},
-            bengaliDate: { bn: 'বাংলা তারিখ', en: 'Bengali Date' }, arabicDate: { bn: 'হিজরি তারিখ', en: 'Hijri Date' }, nextBirthday: { bn: 'পরবর্তী জন্মদিন', en: 'Next Birthday' },
-            dayOfWeek: { bn: 'জন্মের বার', en: 'Day of Birth' }, zodiacSign: { bn: 'রাশি', en: 'Zodiac Sign' }, error_no_date_1: { bn: 'অনুগ্রহ করে প্রথম জন্ম তারিখ দিন।', en: 'Please provide the first date of birth.' },
-            error_no_date_2: { bn: 'অনুগ্রহ করে দ্বিতীয় জন্ম তারিখ দিন।', en: 'Please provide the second date of birth.' }, error_future_date: { bn: 'জন্ম তারিখ ভবিষ্যতের হতে পারে না।', en: 'Date of birth cannot be in the future.' },
-            day_sun: { bn: 'রবিবার', en: 'Sunday' }, day_mon: { bn: 'সোমবার', en: 'Monday' }, day_tue: { bn: 'মঙ্গলবার', en: 'Tuesday' }, day_wed: { bn: 'বুধবার', en: 'Wednesday' }, day_thu: { bn: 'বৃহস্পতিবার', en: 'Thursday' }, day_fri: { bn: 'শুক্রবার', en: 'Friday' }, day_sat: { bn: 'শনিবার', en: 'Saturday' },
-            zodiac_aquarius: { bn: 'কুম্ভ', en: 'Aquarius' }, zodiac_pisces: { bn: 'মীন', en: 'Pisces' }, zodiac_aries: { bn: 'মেষ', en: 'Aries' }, zodiac_taurus: { bn: 'বৃষ', en: 'Taurus' }, zodiac_gemini: { bn: 'মিথুন', en: 'Gemini' }, zodiac_cancer: { bn: 'কর্কট', en: 'Cancer' }, zodiac_leo: { bn: 'সিংহ', en: 'Leo' }, zodiac_virgo: { bn: 'কন্যা', en: 'Virgo' }, zodiac_libra: { bn: 'তুলা', en: 'Libra' }, zodiac_scorpio: { bn: 'বৃশ্চিক', en: 'Scorpio' }, zodiac_sagittarius: { bn: 'ধনু', en: 'Sagittarius' }, zodiac_capricorn: { bn: 'মকর', en: 'Capricorn' },
-            prompt_enter_name: { bn: 'জন্মদিনের জন্য একটি নাম দিন:', en: 'Enter a name for this birthday:' }, birthday_saved: { bn: 'জন্মদিন সেভ করা হয়েছে!', en: 'Birthday saved!' },
-            birthday_deleted: { bn: 'জন্মদিন মুছে ফেলা হয়েছে।', en: 'Birthday deleted.' }, load: { bn: 'লোড', en: 'Load' }, delete: { bn: 'মুছুন', en: 'Delete' },
-            days_left: { bn: 'দিন বাকি', en: 'days left' }, today: { bn: 'আজ! 🎉', en: 'Today! 🎉' }, older_than: { bn: 'বড়', en: 'older' }, same_age: { bn: 'একই বয়সের', en: 'are the same age' }, person1: { bn: 'ব্যক্তি ১', en: 'Person 1' }, person2: { bn: 'ব্যক্তি ২', en: 'Person 2' }, is: {bn: '', en: 'is'}, by: {bn: 'এর চেয়ে', en: 'than'}, and: {bn: 'ও', en: 'and'}
-        };
+        let currentAgeResult = null;
+        const langStrings = { title: { bn: 'বয়স ক্যালকুলেটর', en: 'Age Calculator' }, person1Label: { bn: 'আপনার জন্ম তারিখ দিন', en: 'Enter Date of Birth' }, person2Label: { bn: 'দ্বিতীয় ব্যক্তির জন্ম তারিখ', en: 'Second Person\'s Date of Birth' }, saveBtn: { bn: 'সেভ করুন', en: 'Save' }, calculateBtn: { bn: 'হিসাব করুন', en: 'Calculate' }, compareBtn: { bn: 'বয়স ডিফারেন্স চেক করুন', en: 'Compare' }, compareToggleBtn: { bn: 'বয়স ডিফারেন্স চেক করুন', en: 'Compare Age' }, cancelCompare: { bn: 'বাতিল করুন', en: 'Cancel' }, savedBirthdaysTitle: { bn: 'সংরক্ষিত জন্মদিন', en: 'Saved Birthdays' }, years: { bn: 'বছর', en: 'Years' }, months: { bn: 'মাস', en: 'Months' }, days: { bn: 'দিন', en: 'Days' }, ageDifference: {bn: 'বয়সের পার্থক্য', en: 'Age Difference'}, bengaliDate: { bn: 'বাংলা তারিখ', en: 'Bengali Date' }, arabicDate: { bn: 'হিজরি তারিখ', en: 'Hijri Date' }, nextBirthday: { bn: 'পরবর্তী জন্মদিন', en: 'Next Birthday' }, dayOfWeek: { bn: 'জন্মের বার', en: 'Day of Birth' }, zodiacSign: { bn: 'রাশি', en: 'Zodiac Sign' }, error_no_date_1: { bn: 'অনুগ্রহ করে প্রথম জন্ম তারিখ দিন।', en: 'Please provide the first date of birth.' }, error_no_date_2: { bn: 'অনুগ্রহ করে দ্বিতীয় জন্ম তারিখ দিন।', en: 'Please provide the second date of birth.' }, error_future_date: { bn: 'জন্ম তারিখ ভবিষ্যতের হতে পারে না।', en: 'Date of birth cannot be in the future.' }, day_sun: { bn: 'রবিবার', en: 'Sunday' }, day_mon: { bn: 'সোমবার', en: 'Monday' }, day_tue: { bn: 'মঙ্গলবার', en: 'Tuesday' }, day_wed: { bn: 'বুধবার', en: 'Wednesday' }, day_thu: { bn: 'বৃহস্পতিবার', en: 'Thursday' }, day_fri: { bn: 'শুক্রবার', en: 'Friday' }, day_sat: { bn: 'শনিবার', en: 'Saturday' }, zodiac_aquarius: { bn: 'কুম্ভ', en: 'Aquarius' }, zodiac_pisces: { bn: 'মীন', en: 'Pisces' }, zodiac_aries: { bn: 'মেষ', en: 'Aries' }, zodiac_taurus: { bn: 'বৃষ', en: 'Taurus' }, zodiac_gemini: { bn: 'মিথুন', en: 'Gemini' }, zodiac_cancer: { bn: 'কর্কট', en: 'Cancer' }, zodiac_leo: { bn: 'সিংহ', en: 'Leo' }, zodiac_virgo: { bn: 'কন্যা', en: 'Virgo' }, zodiac_libra: { bn: 'তুলা', en: 'Libra' }, zodiac_scorpio: { bn: 'বৃশ্চিক', en: 'Scorpio' }, zodiac_sagittarius: { bn: 'ধনু', en: 'Sagittarius' }, zodiac_capricorn: { bn: 'মকর', en: 'Capricorn' }, prompt_enter_name: { bn: 'জন্মদিনের জন্য একটি নাম দিন:', en: 'Enter a name for this birthday:' }, birthday_saved: { bn: 'জন্মদিন সেভ করা হয়েছে!', en: 'Birthday saved!' }, birthday_deleted: { bn: 'জন্মদিন মুছে ফেলা হয়েছে।', en: 'Birthday deleted.' }, load: { bn: 'লোড', en: 'Load' }, delete: { bn: 'মুছুন', en: 'Delete' }, days_left: { bn: 'দিন বাকি', en: 'days left' }, today: { bn: 'আজ! 🎉', en: 'Today! 🎉' }, older_than: { bn: 'বড়', en: 'older' }, same_age: { bn: 'একই বয়সের', en: 'are the same age' }, person1: { bn: 'ব্যক্তি ১', en: 'Person 1' }, person2: { bn: 'ব্যক্তি ২', en: 'Person 2' }, is: {bn: '', en: 'is'}, by: {bn: 'এর চেয়ে', en: 'than'}, and: {bn: 'ও', en: 'and'} };
         const zodiacIcons = { Aquarius: "♒", Pisces: "♓", Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋", Leo: "♌", Virgo: "♍", Libra: "♎", Scorpio: "♏", Sagittarius: "♐", Capricorn: "♑" };
         const dayIcons = { Sunday: "☀️", Monday: "🌙", Tuesday: "♂️", Wednesday: "☿️", Thursday: "♃", Friday: "♀️", Saturday: "♄" };
         const arabicMonths = { bn: ["মুহাররম", "সফর", "রবিউল আউয়াল", "রবিউস সানি", "জমাদিউল আউয়াল", "জমাদিউস সানি", "রজব", "শাবান", "রমজান", "শাওয়াল", "জিলকদ", "জিলহজ"], en: ["Muharram", "Safar", "Rabi' al-awwal", "Rabi' al-thani", "Jumada al-ula", "Jumada al-thani", "Rajab", "Sha'ban", "Ramadan", "Shawwal", "Dhu al-Qi'dah", "Dhu al-Hijjah"] };
         const body = document.body, errorMessageDiv = document.getElementById('error-message'), resultSection = document.getElementById('result-section'), dob1Input = document.getElementById('dob1'), dob2Input = document.getElementById('dob2'), person2Container = document.getElementById('person2-container'), calculateBtn = document.getElementById('calculate-btn'), compareToggleBtn = document.getElementById('compare-toggle-btn'), saveDobBtn = document.getElementById('save-dob-btn'), savedBirthdaysList = document.getElementById('saved-birthdays-list'), resultYears = document.getElementById('result-years'), resultMonths = document.getElementById('result-months'), resultDays = document.getElementById('result-days'), resultYearsLabel = document.getElementById('result-years-label'), comparisonSubtext = document.getElementById('comparison-subtext'), extraInfoCardsContainer = document.getElementById('extra-info-cards-container'), settingsFab = document.getElementById('settings-fab');
-
         const toBengaliNumber = (num) => String(num).replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
+        const updateLanguage = () => { currentLang = body.classList.contains('lang-en') ? 'en' : 'bn'; document.querySelectorAll('[data-lang]').forEach(el => { if (langStrings[el.getAttribute('data-lang')]?.[currentLang]) el.textContent = langStrings[el.getAttribute('data-lang')][currentLang]; }); if(isCompareMode){ compareToggleBtn.innerHTML = `<i class="fas fa-times"></i> <span data-lang="cancelCompare">${langStrings.cancelCompare[currentLang]}</span>`; calculateBtn.querySelector('span').textContent = langStrings.compareBtn[currentLang]; } else { compareToggleBtn.innerHTML = `<i class="fas fa-plus"></i> <span data-lang="compareToggleBtn">${langStrings.compareToggleBtn[currentLang]}</span>`; calculateBtn.querySelector('span').textContent = langStrings.calculateBtn[currentLang]; } renderSavedBirthdays(); if (!resultSection.classList.contains('opacity-0') && dob1Input.value) { if (!isCompareMode || (isCompareMode && dob2Input.value)) { performCalculation(false); } } };
+        const animateValue = (el, s, e, d) => { let startTimestamp = null; const step = (timestamp) => { if (!startTimestamp) startTimestamp = timestamp; const progress = Math.min((timestamp - startTimestamp) / d, 1); const currentValue = Math.floor(progress * (e - s) + s); el.textContent = currentLang === 'bn' ? toBengaliNumber(currentValue) : currentValue.toLocaleString(); if (progress < 1) window.requestAnimationFrame(step); }; window.requestAnimationFrame(step); };
+        const calculateAge = (dobString) => { if (!dobString) return null; const birthDate = new Date(dobString); const today = new Date(); if (birthDate > today) return { error: 'future_date' }; let years = today.getFullYear() - birthDate.getFullYear(), months = today.getMonth() - birthDate.getMonth(), days = today.getDate() - birthDate.getDate(); if (days < 0) { months--; days += new Date(today.getFullYear(), today.getMonth(), 0).getDate(); } if (months < 0) { years--; months += 12; } return { years, months, days, birthDate }; };
+        const displayExtraInfo = (age) => { extraInfoCardsContainer.innerHTML = ''; try { const bDate = new BengaliDate(age.birthDate); const rawBengaliString = bDate.format('D MMMM, YYYY', currentLang); let bengaliDateString; if(currentLang === 'bn') { bengaliDateString = rawBengaliString.replace(/[0-9]/g, (d) => toBengaliNumber(d)); } else { bengaliDateString = rawBengaliString; } extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.bengaliDate[currentLang], bengaliDateString, "fas fa-calendar-alt text-red-300")); const hDate = hijriConverter.toHijri(age.birthDate); const hijriDay = currentLang === 'bn' ? toBengaliNumber(hDate.hd) : hDate.hd; const hijriYear = currentLang === 'bn' ? toBengaliNumber(hDate.hy) : hDate.hy; const hijriMonth = arabicMonths[currentLang][hDate.hm - 1]; const arabicDateString = `${hijriDay} ${hijriMonth}, ${hijriYear}`; extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.arabicDate[currentLang], arabicDateString, "fas fa-moon text-blue-300")); const dayOfWeekIndex = age.birthDate.getDay(), dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'], dayOfWeekEn = langStrings[`day_${dayKeys[dayOfWeekIndex]}`]['en'], dayOfWeek = langStrings[`day_${dayKeys[dayOfWeekIndex]}`][currentLang]; const birthDay = age.birthDate.getDate(); const birthMonth = age.birthDate.getMonth() + 1; const zodiacEn = getZodiacSign(birthDay, birthMonth); const zodiac = langStrings[`zodiac_${zodiacEn.toLowerCase()}`]?.[currentLang] || zodiacEn; const today = new Date(); today.setHours(0, 0, 0, 0); let nextBirthday = new Date(today.getFullYear(), age.birthDate.getMonth(), age.birthDate.getDate()); if(today > nextBirthday) nextBirthday.setFullYear(today.getFullYear() + 1); const daysToNextBday = Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24)); let countdownText = daysToNextBday === 0 ? langStrings.today[currentLang] : (currentLang === 'bn' ? `${toBengaliNumber(daysToNextBday)} ${langStrings.days_left[currentLang]}` : `${daysToNextBday} ${langStrings.days_left[currentLang]}`); extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.nextBirthday[currentLang], countdownText, "fas fa-birthday-cake text-pink-300")); extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.dayOfWeek[currentLang], `${dayIcons[dayOfWeekEn]} ${dayOfWeek}`, "fas fa-calendar-day text-indigo-300")); extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.zodiacSign[currentLang], `${zodiacIcons[zodiacEn]} ${zodiac}`, "fas fa-star text-purple-300")); } catch (e) { console.error("Error displaying extra info:", e); extraInfoCardsContainer.innerHTML = `<p class="text-red-400 text-center">An error occurred.</p>`; } };
+        const showSingleResults = (age) => { currentAgeResult = age; resultSection.classList.remove('opacity-0'); comparisonSubtext.classList.add('hidden'); resultYearsLabel.textContent = langStrings.years[currentLang]; animateValue(resultYears, 0, age.years, 1200); animateValue(resultMonths, 0, age.months, 1200); animateValue(resultDays, 0, age.days, 1200); extraInfoCardsContainer.innerHTML = ''; unlockExtraInfoBtn.classList.remove('hidden'); };
+        const showComparisonResults = (d1, d2) => { resultSection.classList.remove('opacity-0'); comparisonSubtext.classList.remove('hidden'); extraInfoCardsContainer.innerHTML = ''; unlockExtraInfoBtn.classList.add('hidden'); let olderDate, youngerDate, olderPerson, youngerPerson; if(d1 < d2) { [olderDate, youngerDate, olderPerson, youngerPerson] = [d1, d2, 'person1', 'person2']; } else { [olderDate, youngerDate, olderPerson, youngerPerson] = [d2, d1, 'person2', 'person1']; } let years = youngerDate.getFullYear() - olderDate.getFullYear(), months = youngerDate.getMonth() - olderDate.getMonth(), days = youngerDate.getDate() - olderDate.getDate(); if (days < 0) { months--; days += new Date(youngerDate.getFullYear(), youngerDate.getMonth(), 0).getDate(); } if (months < 0) { years--; months += 12; } animateValue(resultYears, 0, years, 1200); animateValue(resultMonths, 0, months, 1200); animateValue(resultDays, 0, days, 1200); if (d1.getTime() === d2.getTime()) { comparisonSubtext.textContent = `${langStrings.person1[currentLang]} ${langStrings.and[currentLang]} ${langStrings.person2[currentLang]} ${langStrings.same_age[currentLang]}`; } else if (currentLang === 'bn') { let diffTextParts = []; if (years > 0) diffTextParts.push(`${toBengaliNumber(years)} ${langStrings.years[currentLang]}`); if (months > 0) diffTextParts.push(`${toBengaliNumber(months)} ${langStrings.months[currentLang]}`); if (days > 0) diffTextParts.push(`${toBengaliNumber(days)} ${langStrings.days[currentLang]}`); const diffText = diffTextParts.join(' '); comparisonSubtext.textContent = `${langStrings[olderPerson][currentLang]} ${langStrings[youngerPerson][currentLang]} ${langStrings.by[currentLang]} ${diffText} ${langStrings.older_than[currentLang]}`; } else { let diffTextParts = []; if (years > 0) diffTextParts.push(`${years} ${langStrings.years[currentLang]}`); if (months > 0) diffTextParts.push(`${months} ${langStrings.months[currentLang]}`); if (days > 0) diffTextParts.push(`${days} ${langStrings.days[currentLang]}`); const diffText = diffTextParts.join(', '); comparisonSubtext.textContent = `${langStrings[olderPerson][currentLang]} is ${diffText} ${langStrings.older_than[currentLang]} than ${langStrings[youngerPerson][currentLang]}`; } };
+        function createExtraInfoCard(title, value, iconClass) { const card = document.createElement('div'); card.className = "result-card p-4 rounded-lg text-center"; card.innerHTML = `<p class="text-gray-300 text-sm mb-1 flex items-center justify-center gap-2"><i class="${iconClass}"></i> ${title}</p><span class="text-xl font-bold text-white">${value}</span>`; return card; }
+        function getZodiacSign(day, month) { if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return "Aquarius"; if ((month == 2 && day >= 19) || (month == 3 && day <= 20)) return "Pisces"; if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return "Aries"; if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return "Taurus"; if ((month == 5 && day >= 21) || (month == 6 && day <= 21)) return "Gemini"; if ((month == 6 && day >= 22) || (month == 7 && day <= 22)) return "Cancer"; if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return "Leo"; if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return "Virgo"; if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return "Libra"; if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return "Scorpio"; if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return "Sagittarius"; if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return "Capricorn"; return "Unknown"; }
+        const resetUI = () => { errorMessageDiv.textContent = ''; resultSection.classList.add('opacity-0'); extraInfoCardsContainer.innerHTML = ''; unlockExtraInfoBtn.classList.add('hidden'); };
         
-        const updateLanguage = () => {
-            currentLang = body.classList.contains('lang-en') ? 'en' : 'bn';
-            document.querySelectorAll('[data-lang]').forEach(el => { if (langStrings[el.getAttribute('data-lang')]?.[currentLang]) el.textContent = langStrings[el.getAttribute('data-lang')][currentLang]; });
-            if(isCompareMode){
-                compareToggleBtn.innerHTML = `<i class="fas fa-times"></i> <span data-lang="cancelCompare">${langStrings.cancelCompare[currentLang]}</span>`;
-                calculateBtn.querySelector('span').textContent = langStrings.compareBtn[currentLang];
-            } else {
-                compareToggleBtn.innerHTML = `<i class="fas fa-plus"></i> <span data-lang="compareToggleBtn">${langStrings.compareToggleBtn[currentLang]}</span>`;
-                calculateBtn.querySelector('span').textContent = langStrings.calculateBtn[currentLang];
-            }
-            renderSavedBirthdays();
-            
-            if (!resultSection.classList.contains('opacity-0') && dob1Input.value) {
-                if (!isCompareMode || (isCompareMode && dob2Input.value)) {
-                    performCalculation(false); 
-                }
-            }
-        };
-        
-        const animateValue = (el, s, e, d) => {
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp; const progress = Math.min((timestamp - startTimestamp) / d, 1);
-                const currentValue = Math.floor(progress * (e - s) + s);
-                el.textContent = currentLang === 'bn' ? toBengaliNumber(currentValue) : currentValue.toLocaleString();
-                if (progress < 1) window.requestAnimationFrame(step);
-            }; window.requestAnimationFrame(step);
-        };
-
-        const calculateAge = (dobString) => {
-            if (!dobString) return null; const birthDate = new Date(dobString); const today = new Date();
-            if (birthDate > today) return { error: 'future_date' };
-            let years = today.getFullYear() - birthDate.getFullYear(), months = today.getMonth() - birthDate.getMonth(), days = today.getDate() - birthDate.getDate();
-            if (days < 0) { months--; days += new Date(today.getFullYear(), today.getMonth(), 0).getDate(); } if (months < 0) { years--; months += 12; }
-            return { years, months, days, birthDate };
-        };
-
-        const displayExtraInfo = (age) => {
-            extraInfoCardsContainer.innerHTML = '';
-            try {
-                const bDate = new BengaliDate(age.birthDate);
-                const rawBengaliString = bDate.format('D MMMM, YYYY', currentLang);
-                let bengaliDateString;
-                if(currentLang === 'bn') {
-                    bengaliDateString = rawBengaliString.replace(/[0-9]/g, (d) => toBengaliNumber(d));
-                } else {
-                    bengaliDateString = rawBengaliString; 
-                }
-                extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.bengaliDate[currentLang], bengaliDateString, "fas fa-calendar-alt text-red-300"));
-                
-                const hDate = hijriConverter.toHijri(age.birthDate);
-                const hijriDay = currentLang === 'bn' ? toBengaliNumber(hDate.hd) : hDate.hd;
-                const hijriYear = currentLang === 'bn' ? toBengaliNumber(hDate.hy) : hDate.hy;
-                const hijriMonth = arabicMonths[currentLang][hDate.hm - 1];
-                const arabicDateString = `${hijriDay} ${hijriMonth}, ${hijriYear}`;
-                extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.arabicDate[currentLang], arabicDateString, "fas fa-moon text-blue-300"));
-                
-                const dayOfWeekIndex = age.birthDate.getDay(), dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'], dayOfWeekEn = langStrings[`day_${dayKeys[dayOfWeekIndex]}`]['en'], dayOfWeek = langStrings[`day_${dayKeys[dayOfWeekIndex]}`][currentLang];
-                
-                const birthDay = age.birthDate.getDate();
-                const birthMonth = age.birthDate.getMonth() + 1;
-                const zodiacEn = getZodiacSign(birthDay, birthMonth);
-                const zodiac = langStrings[`zodiac_${zodiacEn.toLowerCase()}`]?.[currentLang] || zodiacEn;
-
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                let nextBirthday = new Date(today.getFullYear(), age.birthDate.getMonth(), age.birthDate.getDate());
-                if(today > nextBirthday) nextBirthday.setFullYear(today.getFullYear() + 1);
-
-                const daysToNextBday = Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24));
-                let countdownText = daysToNextBday === 0 ? langStrings.today[currentLang] : (currentLang === 'bn' ? `${toBengaliNumber(daysToNextBday)} ${langStrings.days_left[currentLang]}` : `${daysToNextBday} ${langStrings.days_left[currentLang]}`);
-
-                extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.nextBirthday[currentLang], countdownText, "fas fa-birthday-cake text-pink-300"));
-                extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.dayOfWeek[currentLang], `${dayIcons[dayOfWeekEn]} ${dayOfWeek}`, "fas fa-calendar-day text-indigo-300"));
-                extraInfoCardsContainer.appendChild(createExtraInfoCard(langStrings.zodiacSign[currentLang], `${zodiacIcons[zodiacEn]} ${zodiac}`, "fas fa-star text-purple-300"));
-            } catch (e) {
-                console.error("Error displaying extra info:", e);
-                extraInfoCardsContainer.innerHTML = `<p class="text-red-400 text-center">An error occurred. Please try again.</p>`;
-            }
-        };
-
-        const showSingleResults = (age) => {
-            resultSection.classList.remove('opacity-0');
-            comparisonSubtext.classList.add('hidden');
-            resultYearsLabel.textContent = langStrings.years[currentLang];
-            animateValue(resultYears, 0, age.years, 1200);
-            animateValue(resultMonths, 0, age.months, 1200);
-            animateValue(resultDays, 0, age.days, 1200);
-            displayExtraInfo(age);
-        };
-
-        const showComparisonResults = (d1, d2) => {
-            resultSection.classList.remove('opacity-0');
-            comparisonSubtext.classList.remove('hidden');
-            extraInfoCardsContainer.innerHTML = '';
-            resultYearsLabel.textContent = langStrings.ageDifference[currentLang];
-            let olderDate, youngerDate, olderPerson, youngerPerson;
-            if(d1 < d2) { [olderDate, youngerDate, olderPerson, youngerPerson] = [d1, d2, 'person1', 'person2']; } else { [olderDate, youngerDate, olderPerson, youngerPerson] = [d2, d1, 'person2', 'person1']; }
-            let years = youngerDate.getFullYear() - olderDate.getFullYear(), months = youngerDate.getMonth() - olderDate.getMonth(), days = youngerDate.getDate() - olderDate.getDate();
-            if (days < 0) { months--; days += new Date(youngerDate.getFullYear(), youngerDate.getMonth(), 0).getDate(); } if (months < 0) { years--; months += 12; }
-            animateValue(resultYears, 0, years, 1200); animateValue(resultMonths, 0, months, 1200); animateValue(resultDays, 0, days, 1200);
-            
-            if (d1.getTime() === d2.getTime()) { 
-                comparisonSubtext.textContent = `${langStrings.person1[currentLang]} ${langStrings.and[currentLang]} ${langStrings.person2[currentLang]} ${langStrings.same_age[currentLang]}`;
-            } else if (currentLang === 'bn') {
-                let diffTextParts = [];
-                if (years > 0) diffTextParts.push(`${toBengaliNumber(years)} ${langStrings.years[currentLang]}`);
-                if (months > 0) diffTextParts.push(`${toBengaliNumber(months)} ${langStrings.months[currentLang]}`);
-                if (days > 0) diffTextParts.push(`${toBengaliNumber(days)} ${langStrings.days[currentLang]}`);
-                const diffText = diffTextParts.join(' ');
-                comparisonSubtext.textContent = `${langStrings[olderPerson][currentLang]} ${langStrings[youngerPerson][currentLang]} ${langStrings.by[currentLang]} ${diffText} ${langStrings.older_than[currentLang]}`; 
-            } else {
-                let diffTextParts = [];
-                if (years > 0) diffTextParts.push(`${years} ${langStrings.years[currentLang]}`);
-                if (months > 0) diffTextParts.push(`${months} ${langStrings.months[currentLang]}`);
-                if (days > 0) diffTextParts.push(`${days} ${langStrings.days[currentLang]}`);
-                const diffText = diffTextParts.join(', ');
-                comparisonSubtext.textContent = `${langStrings[olderPerson][currentLang]} is ${diffText} ${langStrings.older_than[currentLang]} than ${langStrings[youngerPerson][currentLang]}`;
-            }
-        };
-
-        function createExtraInfoCard(title, value, iconClass) {
-            const card = document.createElement('div'); card.className = "result-card p-4 rounded-lg text-center";
-            card.innerHTML = `<p class="text-gray-300 text-sm mb-1 flex items-center justify-center gap-2"><i class="${iconClass}"></i> ${title}</p><span class="text-xl font-bold text-white">${value}</span>`; return card;
-        }
-        
-        function getZodiacSign(day, month) {
-            if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return "Aquarius"; if ((month == 2 && day >= 19) || (month == 3 && day <= 20)) return "Pisces"; if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return "Aries"; if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return "Taurus"; if ((month == 5 && day >= 21) || (month == 6 && day <= 21)) return "Gemini"; if ((month == 6 && day >= 22) || (month == 7 && day <= 22)) return "Cancer"; if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return "Leo"; if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return "Virgo"; if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return "Libra"; if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return "Scorpio"; if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return "Sagittarius"; if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return "Capricorn"; return "Unknown";
-        }
-
-        const resetUI = () => { errorMessageDiv.textContent = ''; resultSection.classList.add('opacity-0'); extraInfoCardsContainer.innerHTML = ''; };
-
         const performCalculation = (withEffects = true) => {
             resetUI();
             const dob1Str = dob1Input.value;
-            if (!dob1Str) {
-                errorMessageDiv.textContent = langStrings.error_no_date_1[currentLang];
-                return;
-            }
+            if (!dob1Str) { errorMessageDiv.textContent = langStrings.error_no_date_1[currentLang]; return; }
+            let calculationSuccess = false;
             if (isCompareMode) {
-                const dob2Str = dob2Input.value;
-                if (!dob2Str) {
-                    errorMessageDiv.textContent = langStrings.error_no_date_2[currentLang];
-                    return;
-                }
-                const d1 = new Date(dob1Str), d2 = new Date(dob2Str), today = new Date();
-                if (d1 > today || d2 > today) {
-                    errorMessageDiv.textContent = langStrings.error_future_date[currentLang];
-                    return;
-                }
-                showComparisonResults(d1, d2);
+                const dob2Str = dob2Input.value; if (!dob2Str) { errorMessageDiv.textContent = langStrings.error_no_date_2[currentLang]; return; } const d1 = new Date(dob1Str), d2 = new Date(dob2Str), today = new Date(); if (d1 > today || d2 > today) { errorMessageDiv.textContent = langStrings.error_future_date[currentLang]; return; } showComparisonResults(d1, d2); calculationSuccess = true;
             } else {
-                const age = calculateAge(dob1Str);
-                if (age.error) {
-                    errorMessageDiv.textContent = langStrings.error_future_date[currentLang];
-                } else {
-                    showSingleResults(age);
-                }
+                const age = calculateAge(dob1Str); if (age.error) { errorMessageDiv.textContent = langStrings.error_future_date[currentLang]; } else { showSingleResults(age); calculationSuccess = true; }
             }
-            if (withEffects) {
-                triggerConfetti();
+            if (withEffects && calculationSuccess) {
+                tg.HapticFeedback.notificationOccurred('success'); triggerConfetti();
+                
+                // === পরিবর্তন: Rewarded Popup বিজ্ঞাপন ফলাফলের পর দেখানো ===
+                show_9528321('pop').then(() => {
+                    console.log("Rewarded Popup ad closed or finished.");
+                }).catch(e => {
+                    console.error("Rewarded Popup ad error:", e);
+                });
             }
         };
-
-        settingsFab.addEventListener('click', () => { 
-            if (body.classList.contains('lang-en')) {
-                body.classList.remove('lang-en');
-                body.classList.add('lang-bn');
-                localStorage.setItem('ageCalcLang', 'bn');
-            } else {
-                body.classList.remove('lang-bn');
-                body.classList.add('lang-en');
-                localStorage.setItem('ageCalcLang', 'en');
-            }
-            updateLanguage(); 
-        });
         
-        compareToggleBtn.addEventListener('click', () => {
-            isCompareMode = !isCompareMode; person2Container.classList.toggle('hidden'); resetUI();
-            updateLanguage();
-        });
-
-        calculateBtn.addEventListener('click', () => {
-            performCalculation(true); 
-        });
-        
-        saveDobBtn.addEventListener('click', () => {
-            const dob = dob1Input.value; if (!dob) { errorMessageDiv.textContent = langStrings.error_no_date_1[currentLang]; return; } 
-            const name = prompt(langStrings.prompt_enter_name[currentLang]); 
-            if (name && name.trim()) {
-                let bdays = getSavedBirthdays(); bdays.push({name: name.trim(), dob}); localStorage.setItem('savedBirthdays', JSON.stringify(bdays));
-                renderSavedBirthdays();
-                alert(langStrings.birthday_saved[currentLang]);
-            }
-        });
-        
-        const getSavedBirthdays = () => JSON.parse(localStorage.getItem('savedBirthdays')) || [];
-        const renderSavedBirthdays = () => {
-            savedBirthdaysList.innerHTML = ''; const bdays = getSavedBirthdays(); if (bdays.length === 0) { savedBirthdaysList.innerHTML = `<p class="text-center text-gray-400 text-sm">${currentLang === 'bn' ? 'কোনো সংরক্ষিত জন্মদিন নেই।' : 'No saved birthdays.'}</p>`; return; }
-            bdays.forEach((b, index) => {
-                const item = document.createElement('div'); item.className = "flex justify-between items-center bg-slate-500/50 p-2 rounded";
-                item.innerHTML = `<div><p class="font-semibold text-white">${b.name}</p><p class="text-xs text-gray-300">${new Date(b.dob).toLocaleDateString(currentLang === 'bn' ? 'bn-BD' : 'en-CA')}</p></div><div><button class="load-btn text-xs bg-green-600 hover:bg-green-700 py-1 px-2 rounded mr-1" data-dob="${b.dob}">${langStrings.load[currentLang]}</button><button class="delete-btn text-xs bg-red-600 hover:red-700 py-1 px-2 rounded" data-index="${index}">${langStrings.delete[currentLang]}</button></div>`;
-                savedBirthdaysList.appendChild(item);
-                item.querySelector('.load-btn').addEventListener('click', (e) => { if(isCompareMode) compareToggleBtn.click(); dob1Input.value = e.target.dataset.dob; calculateBtn.click(); });
-                item.querySelector('.delete-btn').addEventListener('click', (e) => { let bdays = getSavedBirthdays(); bdays.splice(parseInt(e.target.dataset.index), 1); localStorage.setItem('savedBirthdays', JSON.stringify(bdays)); renderSavedBirthdays(); alert(langStrings.birthday_deleted[currentLang]); });
+        // === পরিবর্তন: Rewarded Interstitial বিজ্ঞাপন দেখানোর জন্য বাটন ===
+        unlockExtraInfoBtn.addEventListener('click', () => {
+            show_9528321().then(() => {
+                // বিজ্ঞাপন সফলভাবে দেখার পর ব্যবহারকারীকে পুরস্কার দেওয়া হবে
+                console.log("Rewarded Interstitial ad watched successfully!");
+                handleAdReward();
+            }).catch(e => {
+                console.error("Rewarded Interstitial ad error:", e);
+                // বিজ্ঞাপন দেখতে না পারলেও ব্যবহারকারীকে তথ্য দিয়ে দেওয়া যেতে পারে
+                tg.showAlert("বিজ্ঞাপনটি দেখানো সম্ভব হয়নি, তবে আপনি তথ্য দেখতে পারেন।");
+                handleAdReward();
             });
-        };
+        });
 
-        const savedLang = localStorage.getItem('ageCalcLang');
-        if (savedLang === 'en') {
-            body.classList.add('lang-en');
-        } else {
-            body.classList.add('lang-bn'); 
+        function handleAdReward() {
+            if (currentAgeResult) { displayExtraInfo(currentAgeResult); unlockExtraInfoBtn.classList.add('hidden'); }
         }
-        updateLanguage(); 
-        renderSavedBirthdays();
 
-        function triggerConfetti() {
-            if (typeof confetti === 'function') {
-                const duration = 4*1000, end = Date.now() + duration, defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
-                (function frame() { if (Date.now() > end) return; const count = 25 * ((end - Date.now())/duration);
-                    confetti({...defaults, particleCount: count, origin: { x: Math.random()*.4+.3, y: -.1 }}); confetti({...defaults, particleCount: count, origin: { x: Math.random()*.4+.3, y: 1.1 }});
-                    confetti({...defaults, particleCount: count, origin: { x: -.1, y: Math.random() }}); confetti({...defaults, particleCount: count, origin: { x: 1.1, y: Math.random() }});
-                    requestAnimationFrame(frame);
-                }());
-            }
-        }
+        settingsFab.addEventListener('click', () => { if (body.classList.contains('lang-en')) { body.classList.remove('lang-en'); body.classList.add('lang-bn'); localStorage.setItem('ageCalcLang', 'bn'); } else { body.classList.remove('lang-bn'); body.classList.add('lang-en'); localStorage.setItem('ageCalcLang', 'en'); } updateLanguage(); });
+        compareToggleBtn.addEventListener('click', () => { isCompareMode = !isCompareMode; person2Container.classList.toggle('hidden'); resetUI(); updateLanguage(); });
+        calculateBtn.addEventListener('click', () => { performCalculation(true); });
+        saveDobBtn.addEventListener('click', () => { const dob = dob1Input.value; if (!dob) { errorMessageDiv.textContent = langStrings.error_no_date_1[currentLang]; return; } const name = prompt(langStrings.prompt_enter_name[currentLang]); if (name && name.trim()) { let bdays = getSavedBirthdays(); bdays.push({name: name.trim(), dob}); localStorage.setItem('savedBirthdays', JSON.stringify(bdays)); renderSavedBirthdays(); tg.showAlert(langStrings.birthday_saved[currentLang]); } });
+        const getSavedBirthdays = () => JSON.parse(localStorage.getItem('savedBirthdays')) || [];
+        const renderSavedBirthdays = () => { savedBirthdaysList.innerHTML = ''; const bdays = getSavedBirthdays(); if (bdays.length === 0) { savedBirthdaysList.innerHTML = `<p class="text-center text-gray-400 text-sm">${currentLang === 'bn' ? 'কোনো সংরক্ষিত জন্মদিন নেই।' : 'No saved birthdays.'}</p>`; return; } bdays.forEach((b, index) => { const item = document.createElement('div'); item.className = "flex justify-between items-center bg-slate-500/50 p-2 rounded"; item.innerHTML = `<div><p class="font-semibold">${b.name}</p><p class="text-xs text-gray-300">${new Date(b.dob).toLocaleDateString(currentLang === 'bn' ? 'bn-BD' : 'en-CA')}</p></div><div><button class="load-btn text-xs bg-green-600 hover:bg-green-700 py-1 px-2 rounded mr-1" data-dob="${b.dob}">${langStrings.load[currentLang]}</button><button class="delete-btn text-xs bg-red-600 hover:red-700 py-1 px-2 rounded" data-index="${index}">${langStrings.delete[currentLang]}</button></div>`; savedBirthdaysList.appendChild(item); item.querySelector('.load-btn').addEventListener('click', (e) => { if(isCompareMode) compareToggleBtn.click(); dob1Input.value = e.target.dataset.dob; calculateBtn.click(); }); item.querySelector('.delete-btn').addEventListener('click', (e) => { let bdays = getSavedBirthdays(); bdays.splice(parseInt(e.target.dataset.index), 1); localStorage.setItem('savedBirthdays', JSON.stringify(bdays)); renderSavedBirthdays(); tg.showAlert(langStrings.birthday_deleted[currentLang]); }); }); };
+        const savedLang = localStorage.getItem('ageCalcLang'); if (savedLang === 'en') { body.classList.add('lang-en'); } else { body.classList.add('lang-bn'); } updateLanguage(); renderSavedBirthdays();
+        function triggerConfetti() { if (typeof confetti === 'function') { const duration = 4*1000, end = Date.now() + duration, defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 }; (function frame() { if (Date.now() > end) return; const count = 25 * ((end - Date.now())/duration); confetti({...defaults, particleCount: count, origin: { x: Math.random()*.4+.3, y: -.1 }}); confetti({...defaults, particleCount: count, origin: { x: Math.random()*.4+.3, y: 1.1 }}); confetti({...defaults, particleCount: count, origin: { x: -.1, y: Math.random() }}); confetti({...defaults, particleCount: count, origin: { x: 1.1, y: Math.random() }}); requestAnimationFrame(frame); }()); } }
     });
     </script>
 </body>
